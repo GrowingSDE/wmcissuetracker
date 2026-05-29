@@ -1,4 +1,4 @@
-# wmcissuetracker
+# WatchMyCinema - Issues
 
 This repository is the dedicated issue tracker for
 [watchmycinema](https://github.com/GrowingSDE/watchmycinema).
