@@ -15,9 +15,7 @@
   <a href="https://www.watchmycinema.com/">
     <img alt="Website" src="https://img.shields.io/badge/site-watchmycinema.com-7c3aed?style=for-the-badge" />
   </a>
-  <a href="https://github.com/GrowingSDE/watchmycinema">
-    <img alt="Main repository" src="https://img.shields.io/badge/main_repo-private_app-111827?style=for-the-badge&logo=github" />
-  </a>
+  <img alt="Internal queue" src="https://img.shields.io/badge/internal_queue-connected-111827?style=for-the-badge" />
   <a href="https://github.com/GrowingSDE/wmcissuetracker/issues">
     <img alt="Open issues" src="https://img.shields.io/github/issues/GrowingSDE/wmcissuetracker?style=for-the-badge" />
   </a>
@@ -40,14 +38,15 @@ Use it when you want to:
 - Share confusing copy, broken layout, slow pages, or accessibility issues.
 - Track public-facing work without exposing the private application codebase.
 
-The main application lives in the private/internal repository:
+WatchMyCinema work is split across a public feedback space and a private
+application workspace:
 
 - Public site: [watchmycinema.com](https://www.watchmycinema.com/)
-- Main app repository: [GrowingSDE/watchmycinema](https://github.com/GrowingSDE/watchmycinema)
 - Public issue tracker: [GrowingSDE/wmcissuetracker](https://github.com/GrowingSDE/wmcissuetracker)
+- Internal work queue: connected by automation
 
 This keeps the product conversation open while the application code, deployment
-details, secrets, and internal planning stay in the main private repo.
+details, secrets, and internal planning stay private.
 
 ## How Issues Flow
 
@@ -59,13 +58,13 @@ details, secrets, and internal planning stay in the main private repo.
    - Labels may be added for bug, feature, design, performance, mobile, account, and similar areas.
    - We may ask follow-up questions if something is hard to reproduce.
 
-3. **Private implementation happens in `watchmycinema`**
-   - Fixes and feature work are handled in the main app repository.
+3. **Implementation happens privately**
+   - Fixes and feature work are handled in the internal application workspace.
    - Internal branches, commits, database changes, and deployment details stay there.
 
 4. **The public issue is updated**
-   - When work ships, this issue can be linked to the private PR/commit if appropriate.
-   - If the private repo cannot be linked publicly, the issue will still get a clear status update.
+   - When work ships, this issue gets a clear status update.
+   - Internal links are not required for public verification.
 
 5. **You can verify on the live site**
    - Once deployed, check the fix at [watchmycinema.com](https://www.watchmycinema.com/).
@@ -143,14 +142,19 @@ We may use labels like:
 - `movies` - Movie pages, search, lists, ratings, watch states.
 - `shows` - Show pages, seasons, episodes, show tracking.
 
-## Public To Private Repo Workflow
+## Public To Internal Workflow
 
 When an issue is ready to be worked on:
 
 - Keep the public issue as the user-facing source of truth.
-- Create the implementation branch or PR in `GrowingSDE/watchmycinema`.
-- Reference the public issue number in the private PR title/body when safe.
+- Let automation copy the issue into the internal work queue.
+- Reference the public issue number in internal notes when useful.
 - After deploy, comment here with what changed and how to verify it.
+
+Automation copies new public issues, issue edits, label changes, open/closed
+state changes, and new public comments into the internal work queue. The
+destination is configured privately by maintainers and is not exposed in this
+README.
 
 Example public update:
 
@@ -176,7 +180,6 @@ instead of posting exploit details in this tracker.
 
 - Website: [watchmycinema.com](https://www.watchmycinema.com/)
 - Issues: [Open a new issue](https://github.com/GrowingSDE/wmcissuetracker/issues/new)
-- Main app repo: [GrowingSDE/watchmycinema](https://github.com/GrowingSDE/watchmycinema)
 
 ---
 

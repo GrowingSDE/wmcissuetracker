@@ -1,0 +1,158 @@
+name: Mirror public issues to internal queue
+
+on:
+  issues:
+    types: [opened, edited, reopened, closed, labeled, unlabeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  mirror:
+    name: Copy public issue activity
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.issue.pull_request }}
+    env:
+      INTERNAL_REPOSITORY: ${{ vars.WMC_INTERNAL_REPOSITORY }}
+      INTERNAL_TOKEN: ${{ secrets.WMC_INTERNAL_REPOSITORY_TOKEN }}
+    steps:
+      - name: Mirror issue or comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.WMC_INTERNAL_REPOSITORY_TOKEN }}
+          script: |
+            const internalRepository = process.env.INTERNAL_REPOSITORY;
+            const token = process.env.INTERNAL_TOKEN;
+
+            if (!internalRepository || !token) {
+              core.setFailed(
+                "Missing WMC_INTERNAL_REPOSITORY variable or WMC_INTERNAL_REPOSITORY_TOKEN secret."
+              );
+              return;
+            }
+
+            const [targetOwner, targetRepo] = internalRepository.split("/");
+            if (!targetOwner || !targetRepo) {
+              core.setFailed(
+                "WMC_INTERNAL_REPOSITORY must use the owner/repository format."
+              );
+              return;
+            }
+
+            const publicIssue = context.payload.issue;
+            const sourceRepo = `${context.repo.owner}/${context.repo.repo}`;
+            const sourceIssueRef = `${sourceRepo}#${publicIssue.number}`;
+            const sourceIssueUrl = publicIssue.html_url;
+            const marker = `wmc-public-issue-id: ${sourceIssueRef}`;
+
+            async function findInternalIssue() {
+              const query = [
+                `repo:${targetOwner}/${targetRepo}`,
+                "is:issue",
+                `"${marker}"`,
+                "in:body",
+              ].join(" ");
+
+              const result = await github.rest.search.issuesAndPullRequests({
+                q: query,
+                per_page: 1,
+              });
+
+              return result.data.items[0] || null;
+            }
+
+            function publicIssueBody() {
+              const labels = (publicIssue.labels || [])
+                .map((label) => `\`${label.name || label}\``)
+                .join(", ");
+
+              const body = publicIssue.body && publicIssue.body.trim()
+                ? publicIssue.body.trim()
+                : "_No description provided._";
+
+              return [
+                `<!-- ${marker} -->`,
+                "# Public issue copy",
+                "",
+                `Source: ${sourceIssueUrl}`,
+                `Opened by: @${publicIssue.user.login}`,
+                `Public state: ${publicIssue.state}`,
+                `Public labels: ${labels || "_None_"}`,
+                "",
+                "---",
+                "",
+                body,
+                "",
+                "---",
+                "",
+                "_This issue was copied automatically from the public WatchMyCinema issue tracker._",
+              ].join("\n");
+            }
+
+            function internalTitle() {
+              return `[Public #${publicIssue.number}] ${publicIssue.title}`;
+            }
+
+            let internalIssue = await findInternalIssue();
+
+            if (context.eventName === "issue_comment") {
+              if (!internalIssue) {
+                const created = await github.rest.issues.create({
+                  owner: targetOwner,
+                  repo: targetRepo,
+                  title: internalTitle(),
+                  body: publicIssueBody(),
+                });
+                internalIssue = created.data;
+              }
+
+              const comment = context.payload.comment;
+              const commentBody = comment.body && comment.body.trim()
+                ? comment.body.trim()
+                : "_No comment body._";
+
+              await github.rest.issues.createComment({
+                owner: targetOwner,
+                repo: targetRepo,
+                issue_number: internalIssue.number,
+                body: [
+                  `Public comment on ${sourceIssueRef}`,
+                  "",
+                  `Author: @${comment.user.login}`,
+                  `Source: ${comment.html_url}`,
+                  "",
+                  "---",
+                  "",
+                  commentBody,
+                ].join("\n"),
+              });
+
+              core.info(`Copied public comment to internal issue #${internalIssue.number}.`);
+              return;
+            }
+
+            if (internalIssue) {
+              await github.rest.issues.update({
+                owner: targetOwner,
+                repo: targetRepo,
+                issue_number: internalIssue.number,
+                title: internalTitle(),
+                body: publicIssueBody(),
+                state: publicIssue.state === "closed" ? "closed" : "open",
+              });
+
+              core.info(`Updated internal issue #${internalIssue.number}.`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner: targetOwner,
+              repo: targetRepo,
+              title: internalTitle(),
+              body: publicIssueBody(),
+            });
+
+            core.info(`Created internal issue #${created.data.number}.`);
