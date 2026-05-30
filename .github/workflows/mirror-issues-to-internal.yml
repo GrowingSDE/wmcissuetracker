@@ -10,6 +10,10 @@ permissions:
   contents: read
   issues: read
 
+concurrency:
+  group: mirror-public-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
 jobs:
   mirror:
     name: Copy public issue activity
@@ -49,19 +53,34 @@ jobs:
             const marker = `wmc-public-issue-id: ${sourceIssueRef}`;
 
             async function findInternalIssue() {
-              const query = [
-                `repo:${targetOwner}/${targetRepo}`,
-                "is:issue",
-                `"${marker}"`,
-                "in:body",
-              ].join(" ");
+              for (let attempt = 0; attempt < 6; attempt += 1) {
+                for (let page = 1; page <= 3; page += 1) {
+                  const result = await github.rest.issues.listForRepo({
+                    owner: targetOwner,
+                    repo: targetRepo,
+                    state: "all",
+                    sort: "created",
+                    direction: "desc",
+                    per_page: 100,
+                    page,
+                  });
 
-              const result = await github.rest.search.issuesAndPullRequests({
-                q: query,
-                per_page: 1,
-              });
+                  const found = result.data.find(
+                    (issue) =>
+                      !issue.pull_request &&
+                      issue.body &&
+                      issue.body.includes(marker)
+                  );
+                  if (found) return found;
+                  if (result.data.length < 100) break;
+                }
 
-              return result.data.items[0] || null;
+                if (attempt < 5) {
+                  await new Promise((resolve) => setTimeout(resolve, 2000));
+                }
+              }
+
+              return null;
             }
 
             function publicIssueBody() {
